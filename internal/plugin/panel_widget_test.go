@@ -333,7 +333,54 @@ func TestPluginPanelWidgetKeyReachesOnEventWithoutFocusableWidgets(t *testing.T)
 	}
 }
 
+func TestPluginPanelWidgetOnEventReturningTrueConsumesEvent(t *testing.T) {
+	_, pw := newOnEventPanel(t, `panel:label("Hello")`, `return true`)
+
+	result := pw.HandleEvent(tcell.NewEventKey(tcell.KeyDown, "", tcell.ModNone))
+
+	if result != widgets.EventConsumed {
+		t.Errorf("HandleEvent = %v, want EventConsumed", result)
+	}
+}
+
+func TestPluginPanelWidgetOnEventNotReturningTrueIgnoresEvent(t *testing.T) {
+	cases := map[string]string{
+		"false":   `return false`,
+		"nil":     `return nil`,
+		"nothing": ``,
+		"truthy":  `return "yes"`,
+	}
+	for name, onEventBody := range cases {
+		t.Run(name, func(t *testing.T) {
+			_, pw := newOnEventPanel(t, `panel:label("Hello")`, onEventBody)
+
+			result := pw.HandleEvent(tcell.NewEventKey(tcell.KeyDown, "", tcell.ModNone))
+
+			if result != widgets.EventIgnored {
+				t.Errorf("HandleEvent = %v, want EventIgnored", result)
+			}
+		})
+	}
+}
+
+func TestPluginPanelWidgetOnEventErrorIgnoresEvent(t *testing.T) {
+	p, pw := newOnEventPanel(t, `panel:label("Hello")`, `error("boom")`)
+
+	result := pw.HandleEvent(tcell.NewEventKey(tcell.KeyDown, "", tcell.ModNone))
+
+	if result != widgets.EventIgnored {
+		t.Errorf("HandleEvent = %v, want EventIgnored", result)
+	}
+	if p.LastError == nil {
+		t.Error("expected the on_event error to be recorded in LastError")
+	}
+}
+
 func newFocusedEventPanel(t *testing.T, renderBody string) (*Plugin, *PluginPanelWidget) {
+	return newOnEventPanel(t, renderBody, `received_key = ev.key`)
+}
+
+func newOnEventPanel(t *testing.T, renderBody, onEventBody string) (*Plugin, *PluginPanelWidget) {
 	t.Helper()
 	p := &Plugin{Name: "event-test", Granted: PermissionSet{PanelSidebar: true}}
 	p.State = NewSandbox()
@@ -349,7 +396,7 @@ func newFocusedEventPanel(t *testing.T, renderBody string) (*Plugin, *PluginPane
 					` + renderBody + `
 				end,
 				on_event = function(ev)
-					received_key = ev.key
+					` + onEventBody + `
 				end,
 			},
 		})

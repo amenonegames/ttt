@@ -21,6 +21,25 @@ func (p *Plugin) CallLuaFunc(fn *lua.LFunction, args ...lua.LValue) error {
 	return err
 }
 
+func (p *Plugin) CallLuaFuncBool(fn *lua.LFunction, args ...lua.LValue) (bool, error) {
+	if p.State == nil || fn == nil {
+		return false, nil
+	}
+	err := p.State.CallByParam(lua.P{
+		Fn:      fn,
+		NRet:    1,
+		Protect: true,
+	}, args...)
+	if err != nil {
+		p.LastError = err
+		p.logError("callback", err)
+		return false, err
+	}
+	ret := p.State.Get(-1)
+	p.State.Pop(1)
+	return ret == lua.LTrue, nil
+}
+
 func (p *Plugin) CallOnInstall() {
 	if p.InstallFunc != nil {
 		p.CallLuaFunc(p.InstallFunc)

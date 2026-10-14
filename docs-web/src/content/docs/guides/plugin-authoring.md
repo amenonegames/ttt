@@ -180,7 +180,7 @@ Sidebar panels appear in the left sidebar alongside the file explorer. Requires 
 |-------------|----------|----------|-------------------------------------------------------------------------|
 | `title`     | string   | yes      | Displayed as the panel's tab label.                                     |
 | `render`    | function | yes      | Called each render frame. Receives a [panel proxy](#widget-api) object. |
-| `on_event`  | function | no       | Fallback handler for key/mouse events not consumed by widgets.          |
+| `on_event`  | function | no       | Fallback handler for key/mouse events not consumed by widgets. Return `true` to consume the event so it is not delivered anywhere else. |
 | `actions`   | table    | no       | Array of menu entries for the panel's "..." header menu.                |
 | `on_action` | function | no       | Callback when a header menu action is selected. Receives the command string. |
 
@@ -226,7 +226,7 @@ Bottom panels appear in the bottom panel alongside the terminal. Requires the `p
 |------------|----------|----------|----------------------------------------------------------------|
 | `title`    | string   | yes      | Displayed as the panel's tab label.                            |
 | `render`   | function | yes      | Called each render frame. Receives a panel proxy object.       |
-| `on_event` | function | no       | Fallback handler for key/mouse events not consumed by widgets. |
+| `on_event` | function | no       | Fallback handler for key/mouse events not consumed by widgets. Return `true` to consume the event so it is not delivered anywhere else. |
 
 ### Commands
 
@@ -599,7 +599,7 @@ Open a custom editor tab with plugin-rendered content. Requires `panel.editor` p
 |------------|----------|----------|---------------------------------------------------|
 | `title`    | string   | yes      | Tab title displayed in the editor tab bar.        |
 | `render`   | function | yes      | Render function. Receives a panel proxy object.   |
-| `on_event` | function | no       | Fallback handler for key/mouse events not consumed by widgets. |
+| `on_event` | function | no       | Fallback handler for key/mouse events not consumed by widgets. Return `true` to consume the event so it is not delivered anywhere else. |
 
 ```lua
 ttt.open_tab({
@@ -1615,7 +1615,7 @@ The plugin panel manages its own focus system. When the plugin panel is focused:
 - **Arrow keys** navigate within the focused widget (e.g., up/down in a tree).
 - **Enter** / **Space** activate the focused widget (select tree node, press button, submit input).
 - **Shift+Enter** opens the context menu on the selected tree/list node (if `node_menu` is defined).
-- Events not consumed by the focused widget fall through to the `on_event` handler.
+- Events not consumed by the focused widget fall through to the `on_event` handler. If `on_event` returns `true`, the event is consumed and is not delivered anywhere else.
 
 Labels, titles, and key-value lists are not focusable. If your panel has only non-focusable widgets and raw cells, all events go directly to `on_event`.
 
@@ -1637,11 +1637,14 @@ ttt.register({
     on_event = function(event)
       if event.type == "key" and event.key == "Down" and current_panel then
         current_panel:focus_next()
+        return true
       end
     end,
   },
 })
 ```
+
+Return `true` after moving focus. Otherwise the same **Down** event is delivered again to the list that just received focus, and its selection moves one row.
 
 Both request a redraw like `panel:redraw()`. Focus stays where it is when the panel has no other focusable widget.
 
@@ -1670,7 +1673,7 @@ Widget-specific events are routed automatically to the callbacks you provide:
 
 ### Fallback Event Handler (`on_event`)
 
-For key and mouse events not consumed by widgets, the `on_event` function receives a Lua table describing the event:
+For key and mouse events not consumed by widgets, the `on_event` function receives a Lua table describing the event: Return `true` to consume the event; any other result lets it fall through.
 
 **Key event:**
 

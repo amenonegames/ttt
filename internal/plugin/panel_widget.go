@@ -67,7 +67,9 @@ func (pw *PluginPanelWidget) HandleEvent(ev tcell.Event) widgets.EventResult {
 	if pw.eventFunc != nil && pw.plugin.State != nil {
 		tbl := eventToLua(pw.plugin.State, ev)
 		if tbl != nil {
-			pw.plugin.CallLuaFunc(pw.eventFunc, tbl)
+			if consumed, _ := pw.plugin.CallLuaFuncBool(pw.eventFunc, tbl); consumed {
+				return widgets.EventConsumed
+			}
 		}
 	}
 
