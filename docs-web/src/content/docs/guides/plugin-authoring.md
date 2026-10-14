@@ -1619,6 +1619,32 @@ The plugin panel manages its own focus system. When the plugin panel is focused:
 
 Labels, titles, and key-value lists are not focusable. If your panel has only non-focusable widgets and raw cells, all events go directly to `on_event`.
 
+### Moving Focus from Lua
+
+`panel:focus_next()` and `panel:focus_prev()` move focus to the next or previous focusable widget, cycling the same way as **Tab** / **Shift+Tab**. Use them from `on_event` to move focus from an input to a list when the input passes on a **Down** key:
+
+```lua
+local current_panel
+
+ttt.register({
+  sidebar = {
+    title = "Symbols",
+    render = function(panel)
+      current_panel = panel
+      panel:input({ placeholder = "Filter" })
+      panel:list({ items = symbols })
+    end,
+    on_event = function(event)
+      if event.type == "key" and event.key == "Down" and current_panel then
+        current_panel:focus_next()
+      end
+    end,
+  },
+})
+```
+
+Both request a redraw like `panel:redraw()`. Focus stays where it is when the panel has no other focusable widget.
+
 ## Event Handling
 
 There are two levels of event handling:

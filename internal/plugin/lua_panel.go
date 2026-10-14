@@ -13,6 +13,7 @@ const panelTypeName = "panel"
 type PanelProxy struct {
 	surface     widgets.Surface
 	plugin      *Plugin
+	state       *WidgetState
 	descs       []WidgetDesc
 	usedRaw     bool
 	usedWidgets bool
@@ -64,10 +65,11 @@ func (pp *PanelProxy) wrapCommandCallback(fn *lua.LFunction) func(string, *widge
 	}
 }
 
-func NewPanelProxy(surface widgets.Surface, plugin *Plugin) *PanelProxy {
+func NewPanelProxy(surface widgets.Surface, plugin *Plugin, state *WidgetState) *PanelProxy {
 	return &PanelProxy{
 		surface:    surface,
 		plugin:     plugin,
+		state:      state,
 		descCounts: make(map[WidgetKind]int),
 	}
 }
@@ -109,6 +111,8 @@ func RegisterPanelType(L *lua.LState) {
 		"table":      panelTableWidget,
 		"checkbox":   panelCheckboxWidget,
 		"redraw":     panelRedraw,
+		"focus_next": panelFocusNext,
+		"focus_prev": panelFocusPrev,
 		"markdown":   panelMarkdownWidget,
 		"image":      panelImageWidget,
 	}))
@@ -571,6 +575,7 @@ func collectChildren(L *lua.LState, proxy *PanelProxy, fn *lua.LFunction) []Widg
 	child := &PanelProxy{
 		surface:    proxy.surface,
 		plugin:     proxy.plugin,
+		state:      proxy.state,
 		descCounts: make(map[WidgetKind]int),
 	}
 	ud := PushPanelProxy(L, child)
@@ -825,6 +830,26 @@ func panelRedraw(L *lua.LState) int {
 	if proxy == nil {
 		return 0
 	}
+	if proxy.plugin != nil && proxy.plugin.RequestRedraw != nil {
+		proxy.plugin.RequestRedraw()
+	}
+	return 0
+}
+
+func panelFocusNext(L *lua.LState) int {
+	return moveFocus(L, (*widgets.FocusManager).FocusNext)
+}
+
+func panelFocusPrev(L *lua.LState) int {
+	return moveFocus(L, (*widgets.FocusManager).FocusPrev)
+}
+
+func moveFocus(L *lua.LState, move func(*widgets.FocusManager)) int {
+	proxy := checkPanelProxy(L)
+	if proxy == nil || proxy.state == nil {
+		return 0
+	}
+	move(proxy.state.focus)
 	if proxy.plugin != nil && proxy.plugin.RequestRedraw != nil {
 		proxy.plugin.RequestRedraw()
 	}

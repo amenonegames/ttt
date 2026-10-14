@@ -36,7 +36,7 @@ func (pw *PluginPanelWidget) Render(surface widgets.Surface) {
 
 	surface.Fill(term.Cell{Ch: ' ', Style: term.StyleDefault})
 
-	proxy := NewPanelProxy(surface, pw.plugin)
+	proxy := NewPanelProxy(surface, pw.plugin, pw.state)
 	if err := pw.plugin.CallRenderWith(pw.renderFunc, proxy); err != nil {
 		msg := "Plugin error: " + err.Error()
 		surface.DrawText(0, 0, msg, w, term.StyleDanger)

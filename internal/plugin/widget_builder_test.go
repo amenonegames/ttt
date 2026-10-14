@@ -393,7 +393,7 @@ func TestTreeAndListApplyDeclaredSelectionSilently(t *testing.T) {
 			renderWithSelected := func(id lua.LValue) *widgets.TreeWidget {
 				t.Helper()
 				p.State.SetGlobal("selected_id", id)
-				proxy := NewPanelProxy(newMockSurface(40, 10), p)
+				proxy := NewPanelProxy(newMockSurface(40, 10), p, nil)
 				if err := p.CallRenderWith(p.RenderFunc, proxy); err != nil {
 					t.Fatalf("render failed: %v", err)
 				}
@@ -422,5 +422,82 @@ func TestTreeAndListApplyDeclaredSelectionSilently(t *testing.T) {
 				t.Errorf("on_select calls = %v, want 0 for declarative selection", calls)
 			}
 		})
+	}
+}
+
+func TestPanelFocusNextAndPrevMoveFocusBetweenWidgets(t *testing.T) {
+	p := &Plugin{Name: "focus-test", Granted: PermissionSet{PanelSidebar: true}}
+	p.State = NewSandbox()
+	defer p.State.Close()
+	setupTTTModule(p.State, p)
+	redraws := 0
+	p.RequestRedraw = func() { redraws++ }
+
+	err := p.State.DoString(`
+		local ttt = require("ttt")
+		ttt.register({
+			sidebar = {
+				title = "Focus",
+				render = function(panel)
+					rendered_panel = panel
+					panel:input({ placeholder = "Filter" })
+					panel:list({ items = { { id = "a", label = "A" } } })
+				end,
+			},
+		})
+	`)
+	if err != nil {
+		t.Fatalf("register failed: %v", err)
+	}
+
+	ws := NewWidgetState()
+	ws.focus.SetActive(true)
+	surface := newMockSurface(40, 10)
+	proxy := NewPanelProxy(surface, p, ws)
+	if err := p.CallRenderWith(p.RenderFunc, proxy); err != nil {
+		t.Fatalf("render failed: %v", err)
+	}
+	root := ws.Reconcile(proxy.Descriptors(), p)
+	root.SetRect(widgets.Rect{W: 40, H: 10})
+	root.Render(surface)
+
+	input := ws.items[0].(*widgets.InputWidget)
+	list := ws.items[1].(*widgets.TreeWidget)
+	assertFocus := func(step string, wantInput, wantList bool) {
+		t.Helper()
+		if input.IsFocused() != wantInput || list.IsFocused() != wantList {
+			t.Errorf("%s: input focused = %v, list focused = %v, want %v, %v",
+				step, input.IsFocused(), list.IsFocused(), wantInput, wantList)
+		}
+	}
+
+	assertFocus("initial", true, false)
+	if err := p.State.DoString(`rendered_panel:focus_next()`); err != nil {
+		t.Fatalf("focus_next failed: %v", err)
+	}
+	assertFocus("after focus_next", false, true)
+	if err := p.State.DoString(`rendered_panel:focus_prev()`); err != nil {
+		t.Fatalf("focus_prev failed: %v", err)
+	}
+	assertFocus("after focus_prev", true, false)
+	if redraws != 2 {
+		t.Errorf("redraw requests = %d, want 2", redraws)
+	}
+}
+
+func TestPanelFocusMethodsAreNoOpsWithoutWidgetState(t *testing.T) {
+	p := &Plugin{Name: "focus-nil-test", Granted: PermissionSet{PanelSidebar: true}}
+	p.State = NewSandbox()
+	defer p.State.Close()
+	setupTTTModule(p.State, p)
+	redraws := 0
+	p.RequestRedraw = func() { redraws++ }
+
+	p.State.SetGlobal("stateless_panel", PushPanelProxy(p.State, NewPanelProxy(newMockSurface(40, 10), p, nil)))
+	if err := p.State.DoString(`stateless_panel:focus_next(); stateless_panel:focus_prev()`); err != nil {
+		t.Fatalf("focus methods failed without widget state: %v", err)
+	}
+	if redraws != 0 {
+		t.Errorf("redraw requests = %d, want 0 without widget state", redraws)
 	}
 }

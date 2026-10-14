@@ -188,7 +188,7 @@ func TestTitleWidgetLuaFields(t *testing.T) {
 		t.Fatalf("register failed: %v", err)
 	}
 
-	proxy := NewPanelProxy(newMockSurface(40, 10), p)
+	proxy := NewPanelProxy(newMockSurface(40, 10), p, nil)
 	if err := p.CallRenderWith(p.RenderFunc, proxy); err != nil {
 		t.Fatalf("render failed: %v", err)
 	}
@@ -261,7 +261,7 @@ func TestPluginWidgetMenusParseOptionalCheckedState(t *testing.T) {
 		t.Fatalf("register failed: %v", err)
 	}
 
-	proxy := NewPanelProxy(newMockSurface(80, 20), p)
+	proxy := NewPanelProxy(newMockSurface(80, 20), p, nil)
 	if err := p.CallRenderWith(p.RenderFunc, proxy); err != nil {
 		t.Fatalf("render failed: %v", err)
 	}
