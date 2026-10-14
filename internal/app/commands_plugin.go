@@ -310,22 +310,10 @@ func (a *App) ShowPluginApprovalDialog(p *plugin.Plugin) {
 
 func (a *App) WirePlugin(p *plugin.Plugin) {
 	id := "plugin." + p.Name
-	var sidebar, bottom *plugin.PluginPanelWidget
-	var sidebarTitle, bottomTitle string
-	for _, reg := range a.PluginManager.SidebarPanels {
-		if reg.ID == id {
-			sidebar, sidebarTitle = reg.Widget, reg.Title
-			break
-		}
-	}
-	for _, reg := range a.PluginManager.BottomPanels {
-		if reg.ID == id {
-			bottom, bottomTitle = reg.Widget, reg.Title
-			break
-		}
-	}
-	a.syncPluginPanel(&a.Sidebar.TabbedPanel, id, sidebarTitle, sidebar)
-	a.syncPluginPanel(&a.BottomPanel.TabbedPanel, id, bottomTitle, bottom)
+	sidebar, _ := a.pluginSidebarRegistration(id)
+	bottom, _ := a.pluginBottomRegistration(id)
+	a.syncPluginPanel(&a.Sidebar.TabbedPanel, id, sidebar.Title, sidebar.Widget)
+	a.syncPluginPanel(&a.BottomPanel.TabbedPanel, id, bottom.Title, bottom.Widget)
 	p.RequestRedraw = func() {
 		a.Screen.PostEvent(tcell.NewEventInterrupt(nil))
 	}
@@ -661,6 +649,8 @@ func (a *App) registerPluginCommandsAndKeys(p *plugin.Plugin) {
 			},
 		})
 	}
+	// Before the keybindings below, so a binding to a panel command gets its shortcut hint.
+	a.registerPluginPanelCommands(p)
 
 	for _, kb := range p.PluginKeybindings {
 		steps, err := config.ParseKeyString(kb.Key)
@@ -692,6 +682,74 @@ func (a *App) registerPluginCommandsAndKeys(p *plugin.Plugin) {
 			slog.Warn("plugin menu item targets an unknown menu", "plugin", p.Name, "menu", mi.Menu, "label", mi.Label)
 		}
 	}
+}
+
+func (a *App) pluginSidebarRegistration(id string) (plugin.SidebarRegistration, bool) {
+	for _, reg := range a.PluginManager.SidebarPanels {
+		if reg.ID == id {
+			return reg, true
+		}
+	}
+	return plugin.SidebarRegistration{}, false
+}
+
+func (a *App) pluginBottomRegistration(id string) (plugin.BottomRegistration, bool) {
+	for _, reg := range a.PluginManager.BottomPanels {
+		if reg.ID == id {
+			return reg, true
+		}
+	}
+	return plugin.BottomRegistration{}, false
+}
+
+func (a *App) registerPluginPanelCommands(p *plugin.Plugin) {
+	id := "plugin." + p.Name
+	if reg, ok := a.pluginSidebarRegistration(id); ok {
+		a.registerPluginPanelCommand(p, "sidebar.plugin."+p.Name, reg.Title, "sidebar", func() { a.showPluginSidebarPanel(id) })
+	}
+	if reg, ok := a.pluginBottomRegistration(id); ok {
+		a.registerPluginPanelCommand(p, "panel.plugin."+p.Name, reg.Title, "panel", func() { a.showPluginBottomPanel(id) })
+	}
+}
+
+func (a *App) registerPluginPanelCommand(p *plugin.Plugin, cmdID, title, area string, show func()) {
+	if declaresCommand(p, cmdID) {
+		slog.Warn("plugin command shadows its panel command", "plugin", p.Name, "command", cmdID)
+		return
+	}
+	a.Reg.Register(command.Command{
+		ID:       cmdID,
+		Title:    "Show " + title,
+		Keywords: []string{"view", area, "plugin", p.Name},
+		Handler:  show,
+	})
+}
+
+func declaresCommand(p *plugin.Plugin, cmdID string) bool {
+	for _, cmd := range p.Commands {
+		if cmd.ID == cmdID {
+			return true
+		}
+	}
+	return false
+}
+
+// The panel widget is looked up on every call because a reload swaps it.
+func (a *App) showPluginSidebarPanel(id string) {
+	if w := a.Sidebar.PanelWidget(id); w != nil {
+		a.ShowPanel(id, w)
+	}
+}
+
+func (a *App) showPluginBottomPanel(id string) {
+	if !a.BottomPanel.HasPanel(id) {
+		return
+	}
+	if !a.ContentSplit.ShowBottom {
+		a.ensureUsablePanelSize()
+	}
+	a.BottomPanel.SetActivePanel(id)
+	a.FocusPanel()
 }
 
 func (a *App) RegisterStartupPluginCommands() {

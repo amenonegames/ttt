@@ -205,9 +205,22 @@ sidebar = {
 }
 ```
 
+A sidebar panel with a `render` function also registers the command `sidebar.plugin.<name>` (titled `Show <title>`, where `<name>` is the plugin name), which opens the sidebar on the panel and moves keyboard focus into it, so its first input receives typing. A `sidebar` table without `render` registers no panel and no command. `keybindings` and `menu_items` can target it like any other command:
+
+```lua
+-- in a plugin named "find-type"
+ttt.register({
+  sidebar = { title = "Types", render = function(panel) panel:input({ placeholder = "Type name" }) end },
+  keybindings = { { key = "ctrl+k t", command = "sidebar.plugin.find-type" } },
+  menu_items = { { menu = "view", label = "Find Type", command = "sidebar.plugin.find-type" } },
+})
+```
+
+If the plugin declares its own command with the same id, that command is kept and the panel command is not registered.
+
 ### Bottom Panel
 
-Bottom panels appear in the bottom panel alongside the terminal. Requires the `panel.bottom` permission.
+Bottom panels appear in the bottom panel alongside the terminal. Requires the `panel.bottom` permission. Like sidebar panels, a bottom panel with a `render` function registers `panel.plugin.<name>` (`Show <title>`), which opens the bottom panel on it and focuses it. `keybindings` and `menu_items` can target it the same way.
 
 | Field      | Type     | Required | Description                                                    |
 |------------|----------|----------|----------------------------------------------------------------|
