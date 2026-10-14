@@ -1001,6 +1001,7 @@ panel:tree({
 |--------------|----------|---------|------------------------------------------------|
 | `items`      | table    | `{}`    | Array of [tree node tables](#tree-node-format). |
 | `indent`     | number   | `2`     | Number of spaces per nesting level.            |
+| `selected`   | string   | nil     | Node id to select on this render; omit to keep the user's selection. |
 | `on_select`  | function | nil     | Callback when a node is activated (Enter or double-click). Receives the node table. |
 | `on_expand`  | function | nil     | Callback when a node is expanded (not fired on collapse — intended for lazy-loading children). Receives the node table. |
 | `on_command`   | function | nil     | Callback when a context menu command or key command is selected. Receives `(command, node)`. |
@@ -1041,6 +1042,7 @@ panel:list({
 | Field        | Type     | Default | Description                                            |
 |--------------|----------|---------|--------------------------------------------------------|
 | `items`        | table    | `{}`    | Array of [tree node tables](#tree-node-format).        |
+| `selected`     | string   | nil     | Node id to select on this render; omit to keep the user's selection. |
 | `on_select`    | function | nil     | Callback when an item is activated. Receives the node table. |
 | `on_command`   | function | nil     | Callback when a context menu command or key command is selected. Receives `(command, node)`. |
 | `node_menu`    | table    | nil     | Array of [menu entries](#menu-entry-format) for the right-click context menu. |

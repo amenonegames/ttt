@@ -355,3 +355,72 @@ func assertMenuEntryChecked(t *testing.T, surface string, entry widgets.MenuEntr
 		t.Errorf("%s checked = %v, want %v", surface, entry.Checked, *want)
 	}
 }
+
+func TestTreeAndListApplyDeclaredSelectionSilently(t *testing.T) {
+	for _, widget := range []string{"list", "tree"} {
+		t.Run(widget, func(t *testing.T) {
+			p := &Plugin{Name: "selected-test", Granted: PermissionSet{PanelSidebar: true}}
+			p.State = NewSandbox()
+			defer p.State.Close()
+			setupTTTModule(p.State, p)
+
+			err := p.State.DoString(`
+				local ttt = require("ttt")
+				selected_id = nil
+				select_calls = 0
+				ttt.register({
+					sidebar = {
+						title = "Selected",
+						render = function(panel)
+							panel:` + widget + `({
+								items = {
+									{ id = "a", label = "A" },
+									{ id = "b", label = "B" },
+									{ id = "c", label = "C" },
+								},
+								selected = selected_id,
+								on_select = function() select_calls = select_calls + 1 end,
+							})
+						end,
+					},
+				})
+			`)
+			if err != nil {
+				t.Fatalf("register failed: %v", err)
+			}
+
+			ws := NewWidgetState()
+			renderWithSelected := func(id lua.LValue) *widgets.TreeWidget {
+				t.Helper()
+				p.State.SetGlobal("selected_id", id)
+				proxy := NewPanelProxy(newMockSurface(40, 10), p)
+				if err := p.CallRenderWith(p.RenderFunc, proxy); err != nil {
+					t.Fatalf("render failed: %v", err)
+				}
+				ws.Reconcile(proxy.Descriptors(), p)
+				return ws.items[0].(*widgets.TreeWidget)
+			}
+
+			steps := []struct {
+				name     string
+				selected lua.LValue
+				want     string
+			}{
+				{"first build selects declared id", lua.LString("b"), "b"},
+				{"reconcile selects declared id", lua.LString("c"), "c"},
+				{"unknown id keeps selection", lua.LString("missing"), "c"},
+				{"omitted id keeps selection", lua.LNil, "c"},
+			}
+			for _, step := range steps {
+				tw := renderWithSelected(step.selected)
+				if got := tw.Selected(); got == nil || got.ID != step.want {
+					t.Errorf("%s: selected = %v, want %q", step.name, got, step.want)
+				}
+			}
+
+			if calls := lua.LVAsNumber(p.State.GetGlobal("select_calls")); calls != 0 {
+				t.Errorf("on_select calls = %v, want 0 for declarative selection", calls)
+			}
+		})
+	}
+}

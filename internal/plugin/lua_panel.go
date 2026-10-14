@@ -364,6 +364,9 @@ func panelTreeWidget(L *lua.LState) int {
 	if v := L.GetField(tbl, "truncate_left"); v == lua.LTrue {
 		desc.TruncateLeft = true
 	}
+	if v, ok := L.GetField(tbl, "selected").(lua.LString); ok {
+		desc.SelectedID = string(v)
+	}
 
 	parseBoxModel(L, tbl, &desc)
 	proxy.appendDesc(WidgetTree, desc)
@@ -399,6 +402,9 @@ func panelListWidget(L *lua.LState) int {
 	}
 	if v := L.GetField(tbl, "truncate_left"); v == lua.LTrue {
 		desc.TruncateLeft = true
+	}
+	if v, ok := L.GetField(tbl, "selected").(lua.LString); ok {
+		desc.SelectedID = string(v)
 	}
 
 	parseBoxModel(L, tbl, &desc)

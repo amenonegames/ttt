@@ -134,6 +134,7 @@ func updateWidget(w widgets.Widget, desc WidgetDesc, p *Plugin) {
 			}
 			tw.RestoreExpandedSilent(expanded)
 			tw.SetSelectedIndex(savedIdx)
+			selectDeclaredNode(tw, desc)
 			wireTreeCallbacks(tw, desc, p)
 		}
 	case WidgetButton:
@@ -396,6 +397,7 @@ func createTreeWidget(desc WidgetDesc, p *Plugin) *widgets.TreeWidget {
 		SelectOnClick: desc.SelectOnClick,
 		TruncateLeft:  desc.TruncateLeft,
 	})
+	selectDeclaredNode(tw, desc)
 	wireTreeCallbacks(tw, desc, p)
 	applyBoxModel(&tw.Box, desc)
 	return tw
@@ -408,6 +410,7 @@ func createListWidget(desc WidgetDesc, p *Plugin) *widgets.TreeWidget {
 		SelectOnClick: desc.SelectOnClick,
 		TruncateLeft:  desc.TruncateLeft,
 	})
+	selectDeclaredNode(tw, desc)
 	wireTreeCallbacks(tw, desc, p)
 	applyBoxModel(&tw.Box, desc)
 	return tw
@@ -487,6 +490,14 @@ func wireDropdownCallback(dd *widgets.DropdownWidget, desc WidgetDesc, p *Plugin
 				}
 			})
 		}
+	}
+}
+
+// SelectByID only moves the cursor, so a selection declared by the plugin does
+// not echo back into its own on_select callback.
+func selectDeclaredNode(tw *widgets.TreeWidget, desc WidgetDesc) {
+	if desc.SelectedID != "" {
+		tw.SelectByID(desc.SelectedID)
 	}
 }
 
