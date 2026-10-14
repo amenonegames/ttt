@@ -58,7 +58,7 @@ func (pw *PluginPanelWidget) HandleEvent(ev tcell.Event) widgets.EventResult {
 		}
 	}
 
-	if pw.state != nil && pw.state.root != nil {
+	if pw.routesToRoot(ev) {
 		if result := pw.state.root.HandleEvent(ev); result != widgets.EventIgnored {
 			return result
 		}
@@ -72,6 +72,19 @@ func (pw *PluginPanelWidget) HandleEvent(ev tcell.Event) widgets.EventResult {
 	}
 
 	return widgets.EventIgnored
+}
+
+// The root VStack offers an event to every child, and list/tree act on keys
+// whether or not they hold focus. Once a widget has focus, a key it declined
+// must go to on_event instead of moving an unfocused list's selection.
+func (pw *PluginPanelWidget) routesToRoot(ev tcell.Event) bool {
+	if pw.state == nil || pw.state.root == nil {
+		return false
+	}
+	if _, isKey := ev.(*tcell.EventKey); !isKey {
+		return true
+	}
+	return pw.state.focus == nil || pw.state.focus.Focused() == nil
 }
 
 func (pw *PluginPanelWidget) CursorPosition() (int, int, bool) {

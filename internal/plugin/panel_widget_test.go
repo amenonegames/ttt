@@ -5,6 +5,7 @@ import (
 
 	"github.com/eugenioenko/ttt/internal/term"
 	"github.com/eugenioenko/ttt/internal/widgets"
+	"github.com/gdamore/tcell/v3"
 )
 
 type mockSurface struct {
@@ -296,4 +297,69 @@ func assertOptionalCheckedEntries(t *testing.T, surface string, entries []widget
 	if entries[3].Checked == nil || !*entries[3].Checked {
 		t.Errorf("%s checked entry = %+v, want non-nil true", surface, entries[3])
 	}
+}
+
+func TestPluginPanelWidgetKeyDeclinedByFocusedInputReachesOnEventNotUnfocusedList(t *testing.T) {
+	p, pw := newFocusedEventPanel(t, `
+		panel:input({ placeholder = "Filter" })
+		panel:list({ items = { { id = "a", label = "A" }, { id = "b", label = "B" } } })
+	`)
+	input := pw.state.items[0].(*widgets.InputWidget)
+	list := pw.state.items[1].(*widgets.TreeWidget)
+	if !input.IsFocused() {
+		t.Fatal("expected input to hold focus")
+	}
+	selectedBefore := list.SelectedIndex()
+
+	pw.HandleEvent(tcell.NewEventKey(tcell.KeyDown, "", tcell.ModNone))
+
+	if got := list.SelectedIndex(); got != selectedBefore {
+		t.Errorf("unfocused list selection moved from %d to %d", selectedBefore, got)
+	}
+	if got := p.State.GetGlobal("received_key").String(); got != "Down" {
+		t.Errorf("on_event key = %q, want %q", got, "Down")
+	}
+}
+
+func TestPluginPanelWidgetKeyReachesOnEventWithoutFocusableWidgets(t *testing.T) {
+	p, pw := newFocusedEventPanel(t, `
+		panel:label("Hello")
+	`)
+
+	pw.HandleEvent(tcell.NewEventKey(tcell.KeyRune, "j", tcell.ModNone))
+
+	if got := p.State.GetGlobal("received_key").String(); got != "j" {
+		t.Errorf("on_event key = %q, want %q", got, "j")
+	}
+}
+
+func newFocusedEventPanel(t *testing.T, renderBody string) (*Plugin, *PluginPanelWidget) {
+	t.Helper()
+	p := &Plugin{Name: "event-test", Granted: PermissionSet{PanelSidebar: true}}
+	p.State = NewSandbox()
+	t.Cleanup(p.State.Close)
+	setupTTTModule(p.State, p)
+
+	err := p.State.DoString(`
+		local ttt = require("ttt")
+		ttt.register({
+			sidebar = {
+				title = "Events",
+				render = function(panel)
+					` + renderBody + `
+				end,
+				on_event = function(ev)
+					received_key = ev.key
+				end,
+			},
+		})
+	`)
+	if err != nil {
+		t.Fatalf("register failed: %v", err)
+	}
+
+	pw := NewPluginPanelWidget(p, p.RenderFunc, p.EventFunc)
+	pw.Render(newMockSurface(40, 10))
+	pw.SetFocused(true)
+	return p, pw
 }
