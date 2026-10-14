@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/eugenioenko/ttt/internal/command"
 	"github.com/eugenioenko/ttt/internal/ui"
@@ -266,6 +267,8 @@ func openMenuBarDropdown(app *App, index int) {
 	items := menuBarMenus[index]
 	if index == menuOptionsIndex {
 		items = app.BuildOptionsMenu()
+	} else {
+		items = withPluginMenuItems(app, index, items)
 	}
 	menu := ui.NewContextMenuWidget(resolveShortcuts(reg, items), anchorX, anchorY)
 	menu.Borders = app.Borders
@@ -307,6 +310,48 @@ func openMenuBarDropdown(app *App, index int) {
 	}
 	app.Root.PushOverlay(ui.Overlay{Widget: menu, Modal: true})
 	app.Root.SetFocus(menu)
+}
+
+func menuIndexForName(name string) (int, bool) {
+	for i, label := range menuBarLabels {
+		if i != menuOptionsIndex && label == "menu."+strings.ToLower(name) {
+			return i, true
+		}
+	}
+	return 0, false
+}
+
+func withPluginMenuItems(app *App, index int, items []ui.ContextMenuItem) []ui.ContextMenuItem {
+	contributed := pluginMenuItems(app, index)
+	if len(contributed) == 0 {
+		return items
+	}
+	combined := make([]ui.ContextMenuItem, 0, len(items)+len(contributed))
+	combined = append(combined, items...)
+	return append(combined, contributed...)
+}
+
+func pluginMenuItems(app *App, index int) []ui.ContextMenuItem {
+	if app.PluginManager == nil {
+		return nil
+	}
+	var items []ui.ContextMenuItem
+	for _, p := range app.PluginManager.Plugins() {
+		if !p.Enabled {
+			continue
+		}
+		var block []ui.ContextMenuItem
+		for _, mi := range p.MenuItems {
+			if i, ok := menuIndexForName(mi.Menu); ok && i == index {
+				block = append(block, ui.ContextMenuItem{Label: mi.Label, Command: mi.Command})
+			}
+		}
+		if len(block) > 0 {
+			items = append(items, ui.MenuSep())
+			items = append(items, block...)
+		}
+	}
+	return items
 }
 
 func handleRightClick(app *App, mx, my int) {

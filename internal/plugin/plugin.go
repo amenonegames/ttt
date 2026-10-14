@@ -33,6 +33,12 @@ type PluginKeybinding struct {
 	Command string
 }
 
+type PluginMenuItem struct {
+	Menu    string
+	Label   string
+	Command string
+}
+
 type Plugin struct {
 	mu sync.Mutex
 
@@ -63,6 +69,7 @@ type Plugin struct {
 
 	Commands          []PluginCommand
 	PluginKeybindings []PluginKeybinding
+	MenuItems         []PluginMenuItem
 	FileHandlers      []FileHandler
 
 	RequestRedraw      func()
@@ -267,6 +274,7 @@ func (p *Plugin) Destroy() {
 	p.sidebarMenuFunc = nil
 	p.Commands = nil
 	p.PluginKeybindings = nil
+	p.MenuItems = nil
 	p.FileHandlers = nil
 	p.RequestRedraw = nil
 	p.PostAsync = nil

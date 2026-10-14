@@ -139,7 +139,7 @@ Run **Plugins: Reload** from the command palette to reload a plugin without rest
 
 ## Registration
 
-The entry point Lua file must call `ttt.register()` to declare what the plugin provides. `ttt.register()` accepts a single table with `sidebar`, `bottom`, `commands`, `keybindings`, and/or `file_handlers` fields. A plugin can register any combination:
+The entry point Lua file must call `ttt.register()` to declare what the plugin provides. `ttt.register()` accepts a single table with `sidebar`, `bottom`, `commands`, `keybindings`, `menu_items`, and/or `file_handlers` fields. A plugin can register any combination:
 
 ```lua
 local ttt = require("ttt")
@@ -162,6 +162,9 @@ ttt.register({
   },
   keybindings = {
     { key = "ctrl+k d", command = "myplugin.doSomething" },
+  },
+  menu_items = {
+    { menu = "file", label = "Do Something", command = "myplugin.doSomething" },
   },
   file_handlers = {
     { id = "pdf", extensions = { "pdf" }, magic = "%PDF-", open = function(path, tab) end },
@@ -237,6 +240,34 @@ Each keybinding entry is a table with:
 
 Use `ctrl+k <key>` chords for plugin keybindings to avoid conflicts with built-in shortcuts. Avoid `ctrl+shift` combos — they are unreliable in many terminals.
 
+### Menu Bar Items
+
+Plugins can add entries to the menu bar dropdowns. Selecting an entry runs its command through the command registry, so the command can come from the plugin itself or be a built-in one. Requires the `commands` permission.
+
+Each menu item entry is a table with:
+
+| Field     | Type   | Required | Description                                                              |
+|-----------|--------|----------|--------------------------------------------------------------------------|
+| `menu`    | string | yes      | Target menu: `file`, `edit`, `selection`, `view`, or `help` (case-insensitive). |
+| `label`   | string | yes      | Text shown in the dropdown.                                              |
+| `command` | string | yes      | Command ID to execute when the item is selected.                         |
+
+Each plugin's items are appended to the end of the menu, after a separator. If the command has a keybinding, its shortcut is shown next to the label like built-in items. The `options` menu is built by the editor and does not accept plugin items. Entries with a missing field or an unknown menu are skipped with a warning in the log.
+
+```lua
+ttt.register({
+  commands = {
+    { id = "find-type.open", title = "Find Type: Open", handler = open_picker },
+  },
+  keybindings = {
+    { key = "ctrl+k g", command = "find-type.open" },
+  },
+  menu_items = {
+    { menu = "file", label = "Find Type", command = "find-type.open" },
+  },
+})
+```
+
 ### File Handlers
 
 A plugin can present a binary file type that ttt cannot display itself. Requires the `editor.file_handlers` permission.
@@ -289,7 +320,7 @@ local ttt = require("ttt")
 
 ### `ttt.register(config)`
 
-Registers the plugin's panels, commands, and keybindings. See [Registration](#registration) for the full config table format.
+Registers the plugin's panels, commands, keybindings, and menu bar items. See [Registration](#registration) for the full config table format.
 
 ### `ttt.log(message)` / `ttt.log(level, message)`
 

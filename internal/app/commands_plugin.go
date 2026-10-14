@@ -686,6 +686,12 @@ func (a *App) registerPluginCommandsAndKeys(p *plugin.Plugin) {
 		}
 		a.Reg.SetShortcut(cmdID, FormatKeyBinding(kb.Key))
 	}
+
+	for _, mi := range p.MenuItems {
+		if _, ok := menuIndexForName(mi.Menu); !ok {
+			slog.Warn("plugin menu item targets an unknown menu", "plugin", p.Name, "menu", mi.Menu, "label", mi.Label)
+		}
+	}
 }
 
 func (a *App) RegisterStartupPluginCommands() {

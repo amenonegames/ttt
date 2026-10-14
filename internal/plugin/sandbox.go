@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"log/slog"
 	"runtime"
 	"strings"
 	"time"
@@ -13,6 +14,11 @@ import (
 )
 
 var processStart = time.Now()
+
+func nonEmptyStringField(L *lua.LState, tbl *lua.LTable, name string) (string, bool) {
+	s, ok := L.GetField(tbl, name).(lua.LString)
+	return string(s), ok && s != ""
+}
 
 func osTime() int64 {
 	return time.Now().Unix()
@@ -227,6 +233,31 @@ func setupTTTModule(L *lua.LState, p *Plugin) {
 					p.PluginKeybindings = append(p.PluginKeybindings, PluginKeybinding{
 						Key:     key.String(),
 						Command: cmd.String(),
+					})
+				})
+			}
+
+			if mt, ok := L.GetField(tbl, "menu_items").(*lua.LTable); ok {
+				if err := p.Granted.Check("commands"); err != nil {
+					L.ArgError(1, "commands permission not granted")
+					return 0
+				}
+				mt.ForEach(func(_ lua.LValue, v lua.LValue) {
+					entry, ok := v.(*lua.LTable)
+					if !ok {
+						return
+					}
+					menu, menuOk := nonEmptyStringField(L, entry, "menu")
+					label, labelOk := nonEmptyStringField(L, entry, "label")
+					cmd, cmdOk := nonEmptyStringField(L, entry, "command")
+					if !menuOk || !labelOk || !cmdOk {
+						slog.Warn("skip plugin menu item: menu, label and command must be non-empty strings", "plugin", p.Name)
+						return
+					}
+					p.MenuItems = append(p.MenuItems, PluginMenuItem{
+						Menu:    strings.ToLower(menu),
+						Label:   label,
+						Command: cmd,
 					})
 				})
 			}
