@@ -105,6 +105,42 @@ var editorContextMenu = []ui.ContextMenuItem{
 	{Label: "Go to Line", Command: "editor.goToLine"},
 }
 
+var languageServerMenuCommands = map[string]bool{
+	"editor.goToDefinition":     true,
+	"editor.goToTypeDefinition": true,
+	"editor.goToImplementation": true,
+	"editor.findReferences":     true,
+	"editor.rename":             true,
+}
+
+// The navigation items do nothing without a language server for the file, so
+// they are left out rather than offered as dead entries.
+func (a *App) editorContextMenuItems() []ui.ContextMenuItem {
+	if a.activeFileHasLanguageServer() {
+		items := make([]ui.ContextMenuItem, len(editorContextMenu))
+		copy(items, editorContextMenu)
+		return items
+	}
+	var items []ui.ContextMenuItem
+	for _, item := range editorContextMenu {
+		if languageServerMenuCommands[item.Command] || (item.IsSep && len(items) == 0) {
+			continue
+		}
+		items = append(items, item)
+	}
+	return items
+}
+
+func (a *App) activeFileHasLanguageServer() bool {
+	path, lang := a.editorPathLang()
+	serverKey, _, configured := a.lspResolve(path, lang)
+	if path == "" || !configured {
+		return false
+	}
+	_, binaryOK := a.lspServerState(serverKey)
+	return binaryOK
+}
+
 var diffContextMenu = []ui.ContextMenuItem{
 	{Label: "Copy", Command: "editor.copy"},
 	ui.MenuSep(),
@@ -423,8 +459,7 @@ func handleRightClick(app *App, mx, my int) {
 func openEditorContextMenu(app *App, mx, my int) {
 	line, col, word, ok := app.EditorGroup.PositionAt(mx, my)
 
-	items := make([]ui.ContextMenuItem, len(editorContextMenu))
-	copy(items, editorContextMenu)
+	items := app.editorContextMenuItems()
 
 	callbacks := map[string]func(){}
 	if ok && app.PluginManager != nil {
