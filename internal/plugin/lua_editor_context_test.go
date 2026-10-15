@@ -50,6 +50,36 @@ func TestRegisterContextMenuStoresProvider(t *testing.T) {
 	}
 }
 
+func TestEditorContextMenuItemsCarryShortcutCommand(t *testing.T) {
+	mock := &mockEditorAPI{}
+	p, cleanup := setupTestPluginWithEditor(PermissionSet{EditorRead: true}, mock)
+	defer cleanup()
+
+	err := p.State.DoString(`
+		local editor = require("ttt.editor")
+		editor.register_context_menu(function()
+			return {
+				{ label = "Jump", shortcut_command = "myplugin.jump", on_select = function() end },
+				{ label = "Plain" },
+			}
+		end)
+	`)
+	if err != nil {
+		t.Fatalf("error: %v", err)
+	}
+
+	entries := p.EditorContextMenuItems(1, 1, "word")
+	if len(entries) != 2 {
+		t.Fatalf("expected 2 entries, got %d", len(entries))
+	}
+	if entries[0].ShortcutCommand != "myplugin.jump" {
+		t.Errorf("entry0 shortcut command: got %q", entries[0].ShortcutCommand)
+	}
+	if entries[1].ShortcutCommand != "" {
+		t.Errorf("entry1 shortcut command: got %q, want empty", entries[1].ShortcutCommand)
+	}
+}
+
 func TestEditorContextMenuItemsNoProvider(t *testing.T) {
 	mock := &mockEditorAPI{}
 	p, cleanup := setupTestPluginWithEditor(PermissionSet{EditorRead: true}, mock)

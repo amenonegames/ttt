@@ -31,6 +31,9 @@ type ContextMenuEntry struct {
 	Label     string
 	Separator bool
 	OnSelect  func()
+	// ShortcutCommand names a registered command whose keybinding is shown
+	// beside the entry; selecting the entry still runs OnSelect.
+	ShortcutCommand string
 }
 
 type EditorAPI interface {

@@ -441,7 +441,11 @@ func (p *Plugin) EditorContextMenuItems(line, col int, word string) []ContextMen
 		if fn, ok := L.GetField(itemTbl, "on_select").(*lua.LFunction); ok {
 			onSelect = func() { p.CallLuaFunc(fn) }
 		}
-		entries = append(entries, ContextMenuEntry{Label: label, OnSelect: onSelect})
+		shortcutCommand := ""
+		if sc := L.GetField(itemTbl, "shortcut_command"); sc != lua.LNil {
+			shortcutCommand = sc.String()
+		}
+		entries = append(entries, ContextMenuEntry{Label: label, OnSelect: onSelect, ShortcutCommand: shortcutCommand})
 	})
 
 	return entries

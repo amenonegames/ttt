@@ -1978,6 +1978,10 @@ or `{ separator = true }`. The items are appended to the editor's context menu,
 and `on_select` runs when the user picks one. Return an empty table to
 contribute nothing for that click.
 
+An item may also set `shortcut_command` to the id of a registered command. The
+menu then shows that command's keybinding beside the label, like the built-in
+items do. Picking the item still runs its `on_select`.
+
 ## Filesystem API
 
 The `ttt.fs` module provides file system access. Access is restricted to the workspace folders and the plugin's own directory — paths outside these roots (including via symlinks) return an "access denied" error.

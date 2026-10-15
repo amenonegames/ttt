@@ -190,6 +190,16 @@ func (a *App) withActiveDiffViewSubmenu(items []ui.ContextMenuItem) []ui.Context
 	return combined
 }
 
+func shortcutOf(reg *command.Registry, commandID string) string {
+	if commandID == "" {
+		return ""
+	}
+	if cmd, ok := reg.Get(commandID); ok {
+		return cmd.Shortcut
+	}
+	return ""
+}
+
 func resolveShortcuts(reg *command.Registry, items []ui.ContextMenuItem) []ui.ContextMenuItem {
 	resolved := make([]ui.ContextMenuItem, len(items))
 	for i, item := range items {
@@ -434,7 +444,7 @@ func openEditorContextMenu(app *App, mx, my int) {
 				}
 				id := fmt.Sprintf("__plugin_ctx_%d", len(callbacks))
 				callbacks[id] = e.OnSelect
-				items = append(items, ui.ContextMenuItem{Label: e.Label, Command: id})
+				items = append(items, ui.ContextMenuItem{Label: e.Label, Command: id, Shortcut: shortcutOf(app.Reg, e.ShortcutCommand)})
 			}
 		}
 	}
