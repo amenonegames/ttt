@@ -800,6 +800,10 @@ func (a *App) Paste() {
 			return
 		}
 	}
+	if inp := a.focusedAdapterInput(); inp != nil {
+		inp.PasteText(clipboard.Get())
+		return
+	}
 	a.EditorGroup.Paste()
 }
 
@@ -814,13 +818,25 @@ func (a *App) PasteText(text string) {
 			return
 		}
 	}
-	if adapter, ok := a.Root.Focused.(*ui.WidgetAdapter); ok {
-		if inp, ok := adapter.FocusedWidget().(*widgets.InputWidget); ok {
-			inp.PasteText(text)
-			return
-		}
+	if inp := a.focusedAdapterInput(); inp != nil {
+		inp.PasteText(text)
+		return
 	}
 	a.EditorGroup.PasteText(text)
+}
+
+func (a *App) focusedAdapterInput() *widgets.InputWidget {
+	adapter, ok := a.Root.Focused.(*ui.WidgetAdapter)
+	if !ok {
+		return nil
+	}
+	switch focused := adapter.FocusedWidget().(type) {
+	case *widgets.InputWidget:
+		return focused
+	case *plugin.PluginPanelWidget:
+		return focused.FocusedInput()
+	}
+	return nil
 }
 
 func (a *App) ShowDialog(w ui.Widget) {

@@ -321,6 +321,23 @@ func TestPluginPanelWidgetKeyDeclinedByFocusedInputReachesOnEventNotUnfocusedLis
 	}
 }
 
+func TestPluginPanelWidgetFocusedInputFollowsPanelFocus(t *testing.T) {
+	_, pw := newFocusedEventPanel(t, `
+		panel:input({ placeholder = "Filter" })
+		panel:list({ items = { { id = "a", label = "A" } } })
+	`)
+	input := pw.state.items[0].(*widgets.InputWidget)
+	if got := pw.FocusedInput(); got != input {
+		t.Fatalf("FocusedInput() = %v, want the focused input", got)
+	}
+
+	pw.state.focus.FocusNext()
+
+	if got := pw.FocusedInput(); got != nil {
+		t.Errorf("FocusedInput() with the list focused = %v, want nil", got)
+	}
+}
+
 func TestPluginPanelWidgetKeyReachesOnEventWithoutFocusableWidgets(t *testing.T) {
 	p, pw := newFocusedEventPanel(t, `
 		panel:label("Hello")

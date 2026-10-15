@@ -100,6 +100,14 @@ func (pw *PluginPanelWidget) CursorPosition() (int, int, bool) {
 	return 0, 0, false
 }
 
+func (pw *PluginPanelWidget) FocusedInput() *widgets.InputWidget {
+	if pw.state == nil || pw.state.focus == nil {
+		return nil
+	}
+	inp, _ := pw.state.focus.Focused().(*widgets.InputWidget)
+	return inp
+}
+
 func (pw *PluginPanelWidget) Focusable() bool { return true }
 func (pw *PluginPanelWidget) SetFocused(focused bool) {
 	pw.focused = focused
